@@ -6,9 +6,24 @@ public class FPmovements : MonoBehaviour
 {
     [Header("Movement")]
     // variable pour la vitesse de nos deplacements
-    public float moveSpeed;
+    private float moveSpeed;
+    public float walkSpeed;
+    public float sprintSpeed;
+
 
     public float groundDrag;
+
+    // variables destinees a la creation de mon saut 
+    public float jumpForce;
+    public float jumpCooldown;
+    public float airMultiplier;
+    bool readyToJump = true;
+
+    // choisir une key pour notre saut 
+    [Header("Keybinds")]
+    public KeyCode jumpKey = KeyCode.Space;
+    // choisir une key pour notre sprint
+    public KeyCode sprintKey = KeyCode.LeftShift;
 
     //check if the player is on the ground et seulement a ce moment la on appliquera le drag car c est bizarre de l avoir en etant dans les airs
     [Header("Ground Check")]
@@ -30,7 +45,7 @@ public class FPmovements : MonoBehaviour
     {
         // assign the rigidbody and freeze its rotation
         rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true; 
+        rb.freezeRotation = true;
     }
 
     private void Update()
@@ -40,12 +55,15 @@ public class FPmovements : MonoBehaviour
         //pour verifier si il touche quelque chose. la longueur de notre raycast sera la moitie de la taille de notre joueur + un petit peu plus au cas ou 
         grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
 
+
+        MyInput();
+        SpeedControl();
+
         // handle drag, appliquer le drag
         if (grounded)
             rb.drag = groundDrag;
         else
             rb.drag = 0;
-        MyInput();
     }
     private void FixedUpdate()
     {
@@ -57,6 +75,18 @@ public class FPmovements : MonoBehaviour
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
+
+        Debug.Log(grounded);
+        // quand sauter
+        if(Input.GetKey(jumpKey) && readyToJump && grounded)
+        {
+            readyToJump = false;
+
+            Jump();
+
+            Invoke(nameof(ResetJump), jumpCooldown);
+
+        }
     }
 
     // creation de la fonction pour les mouvements de notre player
@@ -66,8 +96,14 @@ public class FPmovements : MonoBehaviour
         // bouger dans la direction vers laquelle on regarde
         moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
-        // ajouter reellement de la force afin de pouvoir bouger notre personnage.
-        rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
+        // on ground 
+        if(grounded)
+        {
+            // ajouter reellement de la force afin de pouvoir bouger notre personnage.
+            rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
+        }
+        else if(!grounded)
+            rb.AddForce(moveDirection.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
     }
 
     private void SpeedControl()
@@ -81,6 +117,20 @@ public class FPmovements : MonoBehaviour
             Vector3 limitedVel = flatVel.normalized * moveSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
         }
+    }
+
+    private void Jump()
+    {
+        Debug.Log("saut");
+        // avant d appliquer nimporte quelle force, on veut s assurer que notre velocite en Y est set a 0 pour pouvoir sauter toujours a la meme hauteur 
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        // on utilise impulse car on veut avoir de la force qu au debut de notre saut. a noter que impulse est le mode par defaut donc pas besoin de l ajouter dans la logique
+        // mais c est toujours bien de le voir ecrit pour comprendre hihi
+        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+    }
+    private void ResetJump()
+    {
+        readyToJump = true;
     }
 
 }
