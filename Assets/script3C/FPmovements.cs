@@ -120,7 +120,7 @@ public class FPmovements : MonoBehaviour
         if(Input.GetKey(crouchKey))
         {
             transform.localScale = new Vector3(transform.localScale.x, crouchYscale, transform.localScale.z);
-            rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+            // rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
         }
         // arreter de s accroupir 
         if (Input.GetKeyUp(crouchKey))
