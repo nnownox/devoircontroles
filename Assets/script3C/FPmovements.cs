@@ -8,7 +8,9 @@ public enum MovementState
 {
     walking,
     sprinting,
+    wallrunning,
     crouching,
+    sliding,
     air
 }
 
@@ -19,9 +21,16 @@ public class FPmovements : MonoBehaviour
     private float moveSpeed;
     public float walkSpeed;
     public float sprintSpeed;
+    public float slideSpeed;
+    public float wallrunSpeed;
+
+    private float desiredMoveSpeed;
+    private float lastDesiredMoveSpeed;
 
 
     public float groundDrag;
+    public bool sliding;
+    public bool wallrunning;
 
     // variables destinees a la creation de mon saut 
     public float jumpForce;
@@ -132,24 +141,42 @@ public class FPmovements : MonoBehaviour
     // je cree les conditions de mes enum pour quils puissent chacun se declencher quand telle ou telle condition est active 
     private void StateHandler()
     {
+
+        // mode wallrunning
+        if(wallrunning)
+        {
+            state = MovementState.wallrunning;
+            desiredMoveSpeed = wallrunSpeed; // move speed = wall run speed 
+        }
+        // mode - sliding 
+        if (sliding)
+        {
+            state = MovementState.sliding;
+
+            if (OnSlope() && rb.velocity.y < 0.1f)
+                desiredMoveSpeed = slideSpeed;
+            else
+                desiredMoveSpeed = sprintSpeed;
+        }
+
         // mode crouching
-        if(Input.GetKey(crouchKey))
+        if (Input.GetKey(crouchKey))
         {
             state = MovementState.crouching;
-            moveSpeed = crouchSpeed;
+            desiredMoveSpeed = crouchSpeed;
         }
         // mode - sprint 
-        if(grounded && Input.GetKey(sprintKey))
+        if (grounded && Input.GetKey(sprintKey))
         {
             state = MovementState.sprinting;
-            moveSpeed = sprintSpeed;
+            desiredMoveSpeed = sprintSpeed;
         }
 
         // mode - Walking
-        else if(grounded)
+        else if (grounded)
         {
             state = MovementState.walking;
-            moveSpeed = walkSpeed;
+            desiredMoveSpeed = walkSpeed;
         }
 
         // mode - air
@@ -157,8 +184,36 @@ public class FPmovements : MonoBehaviour
         {
             state = MovementState.air;
         }
+
+        // check if desiredMoveSpeed has changed drastically
+        if(Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > 4f && moveSpeed !=0)
+        {
+            StopAllCoroutines();
+            StartCoroutine(SmoothlyLerpMoveSpeed());
+        }
+        else
+        {
+            moveSpeed = desiredMoveSpeed; 
+        }
+        lastDesiredMoveSpeed = desiredMoveSpeed;
     }
 
+    private IEnumerator SmoothlyLerpMoveSpeed()
+    {
+        // smoothly lerp movementSpeed to desired value
+        float time = 0;
+        float difference = Mathf.Abs(desiredMoveSpeed - moveSpeed);
+        float startValue = moveSpeed; 
+
+        while (time < difference)
+        {
+            moveSpeed = Mathf.Lerp(startValue, desiredMoveSpeed, time / difference);
+            time += Time.deltaTime;
+            yield return null;
+        }
+
+        moveSpeed = desiredMoveSpeed;
+    }
 
     // creation de la fonction pour les mouvements de notre player
     private void MovePlayer()
@@ -171,7 +226,7 @@ public class FPmovements : MonoBehaviour
         // on slope
         if(OnSlope() && !exitingSlope)
         {
-            rb.AddForce(GetSlopeMoveDirection() * moveSpeed * 20f, ForceMode.Force);
+            rb.AddForce(GetSlopeMoveDirection(moveDirection) * moveSpeed * 20f, ForceMode.Force);
 
             if(rb.velocity.y > 0)
             {
@@ -239,7 +294,7 @@ public class FPmovements : MonoBehaviour
         exitingSlope = false; 
     }
 
-    private bool OnSlope()
+    public bool OnSlope()
     {
         if(Physics.Raycast(transform.position, Vector2.down, out slopeHit, playerHeight * 0.5f + 0.3f))
         {
@@ -250,9 +305,9 @@ public class FPmovements : MonoBehaviour
         return false;
     }
 
-    private Vector3 GetSlopeMoveDirection()
+    public Vector3 GetSlopeMoveDirection(Vector3 direction)
     {
-        return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized; 
+        return Vector3.ProjectOnPlane(direction, slopeHit.normal).normalized; 
     }
 
 }
