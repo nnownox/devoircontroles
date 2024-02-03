@@ -8,6 +8,7 @@ public class FPcam : MonoBehaviour
     public float sensY;
 
     public Transform orientation;
+    public Transform Persoorientation;
 
     private float xRotation;
     private float yRotation;
@@ -35,5 +36,6 @@ public class FPcam : MonoBehaviour
         // rotate la camera et son orientation
         transform.rotation = Quaternion.Euler(xRotation, yRotation, 0);
         orientation.rotation = Quaternion.Euler(0, yRotation, 0);
+        Persoorientation.rotation = Quaternion.Euler(0, yRotation, 0);
     }
 }
